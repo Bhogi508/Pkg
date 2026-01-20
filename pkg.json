@@ -1,0 +1,70 @@
+import express from "express";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
+import cors from "cors";
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json()); // JSON body read
+
+// 🔥 ACTIVATE PACKAGE API
+app.post("/api/telenor/activate", async (req, res) => {
+  try {
+    const { msisdn, otp } = req.body;
+
+    // basic validation
+    if (!msisdn || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "msisdn and otp required"
+      });
+    }
+
+    const form = new URLSearchParams();
+    form.append("action", "wptp_mydjuice_products_activation");
+    form.append("security", process.env.TELENOR_NONCE);
+    form.append("tp_activation_obj[msisdn]", msisdn);
+    form.append("tp_activation_obj[tp_offer_product_id]", "M81C165GU5O");
+    form.append("tp_activation_obj[tp_activation_action]", "tp-mydjuice");
+    form.append("tp_activation_obj[tp_offer_name]", "");
+    form.append("tp_activation_obj[tp_loading]", "true");
+    form.append("tp_activation_obj[tp_otp]", otp);
+
+    const response = await fetch(
+      "https://www.telenor.com.pk/wp-admin/admin-ajax.php",
+      {
+        method: "POST",
+        headers: {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "x-requested-with": "XMLHttpRequest",
+          "origin": "https://www.telenor.com.pk",
+          "referer": "https://www.telenor.com.pk/my-offer/",
+          "user-agent": "Mozilla/5.0 (Linux; Android 10)",
+          "cookie": process.env.TELENOR_COOKIE
+        },
+        body: form
+      }
+    );
+
+    const data = await response.json();
+
+    res.json({
+      success: true,
+      telenor_response: data
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log("API running on port " + PORT)
+);
